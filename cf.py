@@ -7,8 +7,8 @@ import sys
 import time
 import re
 import subprocess
-import urllib2
-import ConfigParser
+import urllib.request, urllib.error, urllib.parse
+import configparser
 from optparse import *
 from lxml import etree
 
@@ -51,7 +51,7 @@ def save_preferences(pref, config):
     config.set('global', 'filename_pattern', pref.filename_pattern)
     config.set('global', 'replace_space', pref.replace_space)
     config.set('global', 'test_extension', pref.test_extension)
-    for lang, env in pref.envs.items():
+    for lang, env in list(pref.envs.items()):
         config.add_section(lang)
         config.set(lang, 'compile_cmd', env.compile_cmd)
         config.set(lang, 'execute_cmd', env.execute_cmd)
@@ -89,16 +89,17 @@ def check_result(answer, output):
 
 def download_contest(contest_id):
     contest_url = '/'.join((CODEFORCES_URL, 'contest', contest_id))
-    contest_page = urllib2.urlopen(contest_url)
+    contest_page = urllib.request.urlopen(contest_url)
     tree = etree.HTML(contest_page.read())
     for i in tree.xpath(".//table[contains(@class, 'problems')]//td[contains(@class, 'id')]/a"):
         download_problem(contest_id, i.text.strip())
 
 def download_problem(contest_id, problem_id):
-    node_to_string = lambda node: ''.join([node.text]+map(etree.tostring, node.getchildren()))
+    bytes_to_string = lambda b: b.decode('UTF-8')
+    node_to_string = lambda node: ''.join([node.text]+list(map(bytes_to_string, map(etree.tostring, node.getchildren()))))
 
     problem_url = '/'.join((CODEFORCES_URL, 'contest', contest_id, 'problem', problem_id))
-    problem_page = urllib2.urlopen(problem_url)
+    problem_page = urllib.request.urlopen(problem_url)
     tree = etree.HTML(problem_page.read())
 
     title = tree.xpath('.//div[contains(@class, "problem-statement")]/div/div[contains(@class, "title")]')[0].text
@@ -126,19 +127,21 @@ def download_problem(contest_id, problem_id):
             f.write(']]></answer>\n')
         f.write('</tests>\n')
 
-    print 'contest={0!r}, id={1!r}, problem={2!r} is downloaded.'.format(contest_id, problem_id, name)
+    print('contest={0!r}, id={1!r}, problem={2!r} is downloaded.'.format(contest_id, problem_id, name))
 
 def handle_test(executer, case, input_text, answer_text):
-    print 'output:'
+    print('output:')
     start = time.time()
     proc = executer.execute()
-    proc.stdin.write(input_text)
+    proc.stdin.write(bytes(input_text, 'UTF-8'))
     output = ''
-    for output_line in iter(proc.stdout.readline,''):
-        print output_line,
+    while True:
+        output_line = proc.stdout.readline().decode('UTF-8')
+        if len(output_line) == 0: break
+        print(output_line, end='')
         output += output_line
     proc.wait()
-    print
+    print()
     end = time.time()
 
     if proc.returncode != 0:
@@ -149,12 +152,12 @@ def handle_test(executer, case, input_text, answer_text):
         result = 'WA'
 
     if result != 'AC':
-        print 'answer:'
-        print answer_text
+        print('answer:')
+        print(answer_text)
 
-    print '=== Case #{0}: {1} ({2} ms) ===\n'.format(case, result, int((end-start)*1000))
+    print('=== Case #{0}: {1} ({2} ms) ===\n'.format(case, result, int((end-start)*1000)))
     if result != 'AC':
-        raw_input('press enter to continue or <C-c> to leave.')
+        input('press enter to continue or <C-c> to leave.')
 
 def main():
     global options, pref
@@ -162,7 +165,7 @@ def main():
     pref = Preferences()
 
     pref_file = os.path.join(os.path.split(os.path.abspath( __file__ ))[0], 'cf.conf')
-    config = ConfigParser.RawConfigParser()
+    config = configparser.RawConfigParser()
     try:
         with open(pref_file, 'r') as f:
             config.readfp(f)
@@ -170,7 +173,7 @@ def main():
     except IOError as e:
         pass
 
-    config = ConfigParser.RawConfigParser()
+    config = configparser.RawConfigParser()
     save_preferences(pref, config)
     with open(pref_file, 'w') as f:
         config.write(f)
@@ -183,7 +186,7 @@ def main():
         sys.exit(0)
 
     if len(args) < 1 or not os.path.exists(args[0]):
-        print 'Source code not exist!'
+        print('Source code not exist!')
         sys.exit(1)
 
     id, lang = os.path.splitext(args[0])
@@ -192,7 +195,7 @@ def main():
     ret = executer.compile()
 
     if ret != 0:
-        print '>>> failed to Compile the source code!'
+        print('>>> failed to Compile the source code!')
         sys.exit(1)
 
     with open('{0}.xml'.format(id)) as test_file:
@@ -202,7 +205,7 @@ def main():
         answers = tree.xpath('./answer')
         case_count = len(inputs)
 
-        for case in xrange(case_count):
+        for case in range(case_count):
             input_text = inputs[case].text[1:-1]
             answer_text = answers[case].text[1:-1]
             handle_test(executer, case, input_text, answer_text)
