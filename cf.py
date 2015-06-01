@@ -206,7 +206,7 @@ def main():
         print '>>> failed to Compile the source code!'
         sys.exit(1)
 
-    with open('{0}{1}'.format(id, conf.EXTENSION)) as test_file:
+    with open('{0}{1}'.format(id[-1], conf.EXTENSION)) as test_file:
         samples = etree.fromstring(
             '<samples>{0}</samples>'.format(test_file.read()))
         nodes = samples.getchildren()

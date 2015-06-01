@@ -50,6 +50,8 @@ Then, simple run `cf.py A.{lang}`, you will get the result like this:
 
     press enter to continue or <C-c> to leave.
 
+In general, the last character of the filename will be used as problem ID.
+
 ## Configurations
 The file `conf.py' contains the compile & execute commands of support
 languages, so you could add more commands to support more languages
