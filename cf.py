@@ -13,6 +13,10 @@ from lxml import etree
 
 CODEFORCES_URL = 'http://codeforces.com'
 EPS = 1e-6
+alternate_config_locations = [
+        os.path.join(os.environ['HOME'], '.config/codeforces-runner'),
+        '/etc/codeforces-runner']
+sys.path.extend(alternate_config_locations)
 
 
 class Executer(object):
@@ -182,7 +186,9 @@ def main():
         import conf
     except ImportError, e:
         print 'conf.py does not exist.'
-        print 'Maybe you should copy `conf.py.example` to `conf.py`.'
+        print 'Maybe you should copy `conf.py.example` to `conf.py` in ' +\
+              'the source, `{0}` or `{1}` directories.'.format(
+                      *alternate_config_locations)
         sys.exit(1)
 
     if options.contest_id is not None:
